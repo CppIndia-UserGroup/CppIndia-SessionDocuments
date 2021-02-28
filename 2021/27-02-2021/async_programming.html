@@ -1,0 +1,453 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+        <title>reveal.js</title>
+        
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/dist/reset.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/dist/reveal.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/dist/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/plugin/highlight/monokai.css" id="highlight-theme">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+                    <h4>Overview of</h4>
+                    <h1>Asynchronous Programming</h1>
+
+                    <a href="https://www.linkedin.com/in/hemil-ruparel-2aa513166/">- Hemil Ruparel</a>                    
+				</section>
+				
+				<section>
+					<h1>Disclaimer</h1>
+
+					<p>
+						Asynchronous Programming is an optimization. 
+						If you don't have the specific problem, don't use it
+					</p>
+				</section>
+                
+                <section>
+                    <h1>Synchronous Programming</h1>
+                </section>                
+                
+                <section>
+                    <h1>Asynchronous Programming</h1>
+                </section>    
+                
+				<section>
+					<h1>Example</h1>
+                </section>
+                
+                <section>
+                    <h1>Another example</h1>
+                </section>                
+
+                <section>
+                    <pre><code data-trim data-line-numbers="1|2|3|4">
+                        bool is_user_active(int user_id) {
+                            std::this_thread::sleep_for(200ms);
+                            return true;
+                        }
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h1>Sample Data</h1>
+
+                    <pre><code data-trim data-line-numbers="1">                      
+	                    std::vector&lt;int&gt; user_ids(100, 1);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h1>Naive Implementation</h1>
+
+                    <pre><code data-trim data-line-numbers="1|2|3|4|5">
+                        void synchronous(std::vector&lt;int&gt; user_ids) {
+                            for (int id : user_ids) {
+                                std::cout << is_user_active(id) << ' ';
+                            }
+                        }
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h1>But...</h1>
+                </section>
+
+                <section>
+                    <h1>Threaded Implementation</h1>
+
+                    <pre><code data-trim="" data-line-numbers="1|2|3|5|6|7-9|10|13-15">
+                        void threads(std::vector&lt;int&gt; user_ids) {
+                            int size = user_ids.size();                            
+                            std::vector&lt;std::thread&gt; threads(size);
+                            
+                            for (int i = 0; i < size; i++) {
+                                int id = user_ids[i];                                    
+                                auto work = [=] () {
+                                    std::cout << is_user_active(id) << ' ';
+                                };                        
+                                threads[i] = std::thread(work);
+                            }
+                        
+                            for (int i = 0; i < size; i++) {
+                                threads[i].join();
+                            }
+                        
+                            std::cout << '\n';
+                        }
+                    </code></pre>
+				</section>
+				
+				<section>
+                    <h1>100x speedup Yay!</h1>
+				</section>
+
+				<section>
+					<h1>What if ...</h1>
+				</section>
+
+				<section>
+					<h1>Now is where the pain point starts</h1>
+				</section>
+
+				<section>
+					<h1>Inter thread communication</h1>
+				</section>
+
+				<section>
+					<pre><code data-trim="" data-line-numbers="4|6-7|11-12|21">
+std::vector&lt;bool&gt; threads2(std::vector&lt;int&gt; user_ids) {
+    int size = user_ids.size();                            
+    std::vector&lt;std::thread&gt; threads(size);
+    std::vector&lt;bool&gt; result(size);
+    
+    std::mutex mutex;
+                            
+    for (int i = 0; i < size; i++) {
+        int id = user_ids[i];                                    
+        auto work = [i, id, &result, &mutex] () {
+            std::lock_guard&lt;std::mutex&gt; guard(mutex);
+            result[i] = is_user_active(id);
+        };                        
+        threads[i] = std::thread(work);
+    }
+                        
+    for (int i = 0; i < size; i++) {
+        threads[i].join();
+    }
+                        
+    return result;
+}
+                    </code></pre>
+				</section>
+
+				<section>
+					<h1>Can anyone spot the mistake?</h1>
+				</section>
+
+				<section>
+					<pre><code data-trim="" data-line-numbers="10-14">
+std::vector&lt;bool&gt; threads3(std::vector&lt;int&gt; user_ids) {
+    int size = user_ids.size();                            
+    std::vector&lt;std::thread&gt; threads(size);
+    std::vector&lt;bool&gt; result(size);
+                            
+    std::mutex mutex;
+                            
+    for (int i = 0; i < size; i++) {
+        int id = user_ids[i];                                    
+        auto work = [i, id, &result, &mutex] () {
+            bool is_active = is_user_active(id);
+            std::lock_guard&lt;std::mutex&gt; guard(mutex);
+            result[i] = is_active;
+        };
+        threads[i] = std::thread(work);
+    }
+                        
+    for (int i = 0; i < size; i++) {
+        threads[i].join();
+    }
+                        
+    return result;
+}
+					</code></pre>
+                </section>
+                
+                <section>
+                    <h1>Silly mistakes</h1>
+
+                    <p>Like forgetting to take result by reference</p>
+                </section>
+
+				<section>
+					<pre><code data-trim="" data-line-numbers="10">
+std::vector&lt;bool&gt; threads3(std::vector&lt;int&gt; user_ids) {
+    int size = user_ids.size();                            
+    std::vector&lt;std::thread&gt; threads(size);
+    std::vector&lt;bool&gt; result(size);
+                            
+    std::mutex mutex;
+                            
+    for (int i = 0; i < size; i++) {
+        int id = user_ids[i];                                    
+        auto work = [i, id, result, &mutex] () {
+            bool temp = is_user_active(id);
+            std::lock_guard&lt;std::mutex&gt; guard(mutex);
+            result[i] = temp;
+        };                        
+        threads[i] = std::thread(work);
+    }
+                        
+    for (int i = 0; i < size; i++) {
+        threads[i].join();
+    }
+                        
+    return result;
+}
+					</code></pre>
+				</section>
+
+				<section>
+					<h1>You can see how threads breakdown quickly</h1>
+				</section>
+
+				<section>
+					<h1>What if I told you ...</h1>
+				</section>
+
+				<section>
+					<h1>Conventional Terminology</h1>
+				</section>
+
+				<section>
+					<h1>Terminology</h1>
+
+					<ul>
+						<li>Asynchronous operation - an operation that happens in some other thread</li>
+						<li>Future - a value that we get from asynchronous operation</li>
+						<li>Promise - an object that sets up a future</li>
+					</ul>
+				</section>
+				
+				<section>
+					<h1>std::async std::future std::promise</h1>
+				</section>				
+
+                <section>                    
+                    <pre><code data-trim="" data-line-numbers="4|5|10|13-15|17">
+std::vector&lt;bool&gt; async(std::vector&lt;int&gt; user_ids) {
+    int size = user_ids.size();        
+                        
+    std::vector&lt;std::future&lt;bool&gt;&gt; futures(size);						
+    std::vector&lt;bool&gt; result(size);
+
+    for (int i = 0; i < size; i++) {
+        int id = user_ids[i];		
+
+        futures[i] = std::async(std::launch::async, is_user_active, id);
+    }
+
+    for (int i = 0; i < size; i++) {
+        result[i] = futures[i].get();
+    }
+
+    return result;
+}
+                    </code></pre>
+                </section>
+
+                <section>
+					<h1>Works just the same! Nice...</h1>
+				</section>								
+
+                <section>
+					<h1>But there is one problem ...</h1>
+					
+					<ul>						
+						<li>We do not have infinite threads</li>
+					</ul>					
+				</section>				
+				
+				<section>
+					<h1>Solution?</h1>
+
+					<ul>
+						<li>Divide the program into self contained tasks</li>
+						<li>Schedule tasks on available threads</li>
+						<li>Let the kernel notify you when I/O is complete</li>
+					</ul>
+				</section>
+
+				<section>
+					<h1>Frameworks</h1>
+
+					<ul>
+						<li><a href="http://seastar.io/">Seastar</a></li>
+						<li><a href="https://github.com/an-tao/drogon">Drogon</a></li>
+					</ul>
+				</section>
+
+				<section>
+					<h1>Drogon example</h1>
+
+					<pre><code data-trim data-line-numbers="1|2|3-5|6-8">
+                        clientPtr->execSqlAsync(
+                            "select id from users",
+                            [=] (const Result &result) {
+                                process(result);
+                            }, 
+                            [=] (const DrogonDbException &e) {
+                                handle(error);
+                            }
+                        );
+					</code></pre>
+				</section>
+
+				<section>
+					<h1>Be careful!</h1>
+
+					<pre><code data-trim data-line-numbers="1-10|12-20">                        
+                        clientPtr->execSqlAsync(
+                            "create temporary table active_users as "
+                            "select * from users where active is true",
+                            [=] (const Result &result) {
+                                process(result);
+                            }, 
+                            [=] (const DrogonDbException &error) {
+                                handle(error);
+                            }
+                        );
+                        
+                        clientPtr->execSqlAsync(
+                            "select count(*) from active_users",
+                            [=] (const Result &result) {
+                                process(result);
+                            }, 
+                            [=] (const DrogonDbException &error) {
+                                handle(error);
+                            }
+                        );
+					</code></pre>
+				</section>
+
+				<section>
+					<h1>Correct code</h1>
+
+					<pre><code data-trim data-line-numbers>
+                        clientPtr->execSqlAsync(
+                            "create temporary table active_users as "
+                            "select * from users where active is true",
+                            [=] (const Result &result) {
+                                process(result);
+                        
+                                clientPtr->execSqlAsync(
+                                    "select count(*) from active_users",
+                                    [=] (const Result &result) {
+                                        process(result);
+                                    }, 
+                                    [=] (const DrogonDbException &error) {
+                                        handle(error);
+                                    }
+                                );
+                            }, 
+                            [=] (const DrogonDbException &error) {
+                                handle(error);
+                            }
+                        );						
+					</code></pre>
+				</section>
+
+				<section>
+					<h1>Pain points</h1>
+
+					<ul>
+						<li>Deep indentation</li>
+					</ul>
+				</section>
+
+				<section>
+					<h1>Rules of thumb</h1>
+
+					<p>Functions/Lambdas should be self contained i.e. no references</p>
+				</section>
+
+				<section>
+					<h1>Rules of thumb</h1>
+
+					<ul>
+						<li>If the value is trivially copyable, copy it in callbacks</li>
+						<li>If value is not copyable but only one callback needs it, move it in</li>
+						<li>If value is not copyable or mutliple callbacks need it, use std::shared_ptr</li>
+					</ul>
+				</section>
+
+				<section>
+					<h1>When to use?</h1>
+
+					<ul>
+						<li>Heavily I/O bound tasks</li>
+						<li>Responsiveness</li>
+					</ul>
+				</section>								
+
+				<section>
+					<h1>When not to use?</h1>
+					
+					<ul>
+						<li>CPU bound application</li>
+						<li>When the infrastructure can't handle the load</li>						
+					</ul>
+				</section>
+
+				<section>
+					<h1>Implementation details</h1>
+					<ul>
+						<li>Coroutines</li>
+						<li>Callbacks</li>
+					</ul>
+                </section>
+                
+                <section>
+                    <h1>C++11</h1>
+                </section>
+
+                <section>
+                    <h1>Except for</h1>
+
+                    <pre><code data-trim="" data-line-numbers="">
+                        std::this_thread::sleep_for(200ms);
+                    </code></pre>
+                </section>
+
+				<section>
+					<h1>Questions</h1>
+				</section>
+			</div>
+		</div>
+		
+        <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/dist/reveal.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/plugin/notes/notes.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/plugin/markdown/markdown.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.0.2/plugin/highlight/highlight.js"></script>
+
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+				slideNumber: true,
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
