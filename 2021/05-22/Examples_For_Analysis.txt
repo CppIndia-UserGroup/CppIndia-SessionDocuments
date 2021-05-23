@@ -1,0 +1,82 @@
+GCC: -O3 -march=skylake-avx512 -fopt-info-vec-all -fopt-info-vec-missed
+clang: -O3 -march=skylake-avx512 -Rpass-analysis=loop-vectorize -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
+
+Example 1.
+Possible Aliasing Case
+
+void mul_scalar(int* a, int* b, int n)
+{
+    for(int i = 0; i < n; i++)
+    {
+        a[i] = a[i] * b[i];
+    }
+}
+
+
+void mul_vector(int* __restrict__ a, int* __restrict__ b, int n)
+{
+    for(int i = 0; i < n; i++)
+    {
+        a[i] = a[i] * b[i];
+    }
+}
+
+Example 2.
+Get Size
+
+int get_size();
+void mul_scalar(int* __restrict__ a, int* __restrict__ b)
+{
+    for(int i = 0; i < get_size(); i++)
+    {
+        a[i] = a[i] * b[i];
+    }
+}
+
+void mul_vector(int* __restrict__ a, int* __restrict__ b)
+{
+    for(int i = 0, size = get_size() ; i < size; i++)
+    {
+        a[i] = a[i] * b[i];
+    }
+}
+
+Example 3:
+Switch Statement
+void add_offset_scalar(int* a, int x, int n)
+{
+	for (int i = 0; i < n; ++i)
+    {
+        switch (x)
+        {
+        case 1: a[i] = a[i] + 10;
+			  break;
+        case 2: a[i] = a[i] + 12;
+			 break;
+        case 3: a[i] = a[i] + 33;
+            break;
+        }
+    }
+}
+
+void add_offset_vector(int* a, int x, int n)
+{
+    int offset{0};
+    switch (x)
+    {
+        case 1: 
+                offset = 10;
+                break;
+        case 2: 
+                offset = 12;
+                break;
+        case 3: 
+                offset = 33;
+                break;
+    }
+
+    for( int  i = 0; i < n; i++)
+    {
+        a[i] = a[i] + x;
+    }
+}
