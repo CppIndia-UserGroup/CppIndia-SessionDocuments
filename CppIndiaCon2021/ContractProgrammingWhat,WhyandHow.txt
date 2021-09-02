@@ -1,0 +1,3 @@
+https://slides.com/saurabhjoshi-1/deck/fullscreen
+
+https://github.com/sbjoshi/CppIndiaCon-Examples
